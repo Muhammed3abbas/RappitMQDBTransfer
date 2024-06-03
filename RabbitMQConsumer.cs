@@ -8,83 +8,111 @@ using System.Threading.Tasks;
 
 
 
-namespace RabbitMQDBTransfer
-{
-    public class RabbitMQConsumer : IDisposable
+    namespace RabbitMQDBTransfer
     {
-        private readonly ConnectionFactory _connectionFactory;
-        private readonly string _dbConnectionString;
-
-        public RabbitMQConsumer(string rabbitMQConnectionString, string dbConnectionString)
+        public class RabbitMQConsumer : IDisposable
         {
-            _connectionFactory = new ConnectionFactory() { Uri = new Uri(rabbitMQConnectionString) };
-            _dbConnectionString = dbConnectionString;
-        }
+            private readonly ConnectionFactory _connectionFactory;
+            private readonly string _dbConnectionString;
 
-        public async Task StartListeningAsync()
-        {
-            using (var connection = _connectionFactory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            public RabbitMQConsumer(string rabbitMQConnectionString, string dbConnectionString)
             {
-                channel.QueueDeclare(queue: "data_queue",
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+                _connectionFactory = new ConnectionFactory() { Uri = new Uri(rabbitMQConnectionString) };
+                _dbConnectionString = dbConnectionString;
+            }
 
-                var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += async (model, ea) =>
+            public async Task StartListeningAsync()
+            {
+                using (var connection = _connectionFactory.CreateConnection())
+                using (var channel = connection.CreateModel())
                 {
-                    var body = ea.Body.ToArray();
-                    var message = Encoding.UTF8.GetString(body);
+                    channel.QueueDeclare(queue: "data_queue",
+                                         durable: false,
+                                         exclusive: false,
+                                         autoDelete: false,
+                                         arguments: null);
 
-                    var fields = message.Split(',');
-                    if (fields.Length == 2)
+                    var result = channel.BasicGet("data_queue", autoAck: false);
+                    if (result == null)
                     {
-                        var firstName = fields[0];
-                        var lastName = fields[1];
+                        Console.WriteLine("There are no messages to consume.");
+                        return;
+                    }
 
-                        await InsertEmployeeAsync(firstName, lastName);
+                    // If there are messages, set up a consumer to process them
+                    var consumer = new EventingBasicConsumer(channel);
+                    bool dataConsumed = false;
+                    consumer.Received += async (model, ea) =>
+                    {
+                        var body = ea.Body.ToArray();
+                        var message = Encoding.UTF8.GetString(body);
+
+                        var fields = message.Split(',');
+                        if (fields.Length == 2)
+                        {
+                            var firstName = fields[0];
+                            var lastName = fields[1];
+
+                            var success = await InsertEmployeeAsync(firstName, lastName);
+                            if (success)
+                            {
+                                //Console.WriteLine($"Successfully saved Employee: {firstName} {lastName} to the database.");
+                                dataConsumed = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Failed to save Employee: {firstName} {lastName} to the database.");
+                            }
+
+                            channel.BasicAck(ea.DeliveryTag, false);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid message format.");
+                        }
+                    };
+
+                    channel.BasicConsume(queue: "data_queue",
+                                         autoAck: false,
+                                         consumer: consumer);
+
+                    // Allow some time for messages to be processed
+                    await Task.Delay(1000);
+
+                    if (dataConsumed)
+                    {
+                        Console.WriteLine("Data consumed successfully.");
                     }
                     else
                     {
-                        Console.WriteLine("Invalid message format.");
+                        Console.WriteLine("No valid data was consumed.");
                     }
-
-                    channel.BasicAck(ea.DeliveryTag, false);
-                };
-
-                channel.BasicConsume(queue: "data_queue",
-                                     autoAck: false,
-                                     consumer: consumer);
-
-                Console.WriteLine("Listening for messages...");
-                await Task.Delay(5000); // Simulate a 5-second delay for receiving messages
-
-                Console.WriteLine("Data consumed successfully");
-            }
-        }
-
-        private async Task InsertEmployeeAsync(string firstName, string lastName)
-        {
-            try
-            {
-                using (var connection = new SqlConnection(_dbConnectionString))
-                {
-                    string sql = "INSERT INTO Employees (FirstName, LastName) VALUES (@FirstName, @LastName)";
-                    await connection.ExecuteAsync(sql, new { FirstName = firstName, LastName = lastName });
                 }
             }
-            catch (Exception ex)
+
+            private async Task<bool> InsertEmployeeAsync(string firstName, string lastName)
             {
-                Console.WriteLine($"Error inserting employee: {ex.Message}");
+                try
+                {
+                    using (var connection = new SqlConnection(_dbConnectionString))
+                    {
+                        string sql = "INSERT INTO Employees (FirstName, LastName) VALUES (@FirstName, @LastName)";
+                        await connection.ExecuteAsync(sql, new { FirstName = firstName, LastName = lastName });
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error inserting employee: {ex.Message}");
+                    return false;
+                }
+            }
+
+            public void Dispose()
+            {
+                // Dispose resources if any
             }
         }
-
-        public void Dispose()
-        {
-            // Dispose resources if any
-        }
     }
-}
+
 

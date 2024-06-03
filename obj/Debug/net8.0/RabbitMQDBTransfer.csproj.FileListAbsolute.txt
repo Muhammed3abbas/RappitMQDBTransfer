@@ -55,3 +55,4 @@ D:\WE POC\RabbitMQDBTransfer\obj\Debug\net8.0\RabbitMQDBTransfer.pdb
 D:\WE POC\RabbitMQDBTransfer\obj\Debug\net8.0\RabbitMQDBTransfer.genruntimeconfig.cache
 D:\WE POC\RabbitMQDBTransfer\obj\Debug\net8.0\ref\RabbitMQDBTransfer.dll
 D:\WE POC\RabbitMQDBTransfer\bin\Debug\net8.0\Dapper.dll
+D:\WE POC\RabbitMQDBTransfer\obj\Debug\net8.0\RabbitMQDBTransfer.sourcelink.json

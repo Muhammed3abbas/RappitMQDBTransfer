@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RabbitMQDBTransfer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0a2d0ed3b78461213de056b2dbd269ad3f319f3f")]
 [assembly: System.Reflection.AssemblyProductAttribute("RabbitMQDBTransfer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RabbitMQDBTransfer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
